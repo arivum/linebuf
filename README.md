@@ -12,7 +12,7 @@ package main
 import (
     "fmt"
     "github.com/arivum/linebuf/pkg/linebuf"
-	"io"
+    "io"
 )
 
 type Test struct {
