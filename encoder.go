@@ -82,7 +82,7 @@ A possible snippet:
 To retrieve the last error that occured, use
 	enc.LastError()
 */
-func (enc *Encoder) Stream() chan interface{} {
+func (enc *Encoder) Stream() chan<- interface{} {
 	enc.once.Do(func() {
 		go func() {
 			var (
@@ -117,7 +117,12 @@ func (enc *Encoder) Close() {
 	if _, ok = enc.w.(io.Closer); ok {
 		enc.w.(io.Closer).Close()
 	}
-	if _, ok = <-enc.s; ok {
+
+	enc.closeChan()
+}
+
+func (enc *Encoder) closeChan() {
+	enc.closeOnce.Do(func() {
 		close(enc.s)
-	}
+	})
 }

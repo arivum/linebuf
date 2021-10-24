@@ -86,7 +86,7 @@ It returns a channel that can be used to receive the encoded entries inside a lo
 To retrieve the last error that occured, use
 	dec.LastError()
 */
-func (dec *Decoder) Stream(entry ...interface{}) chan interface{} {
+func (dec *Decoder) Stream(entry ...interface{}) <-chan interface{} {
 	var (
 		v     interface{}
 		isPtr = false

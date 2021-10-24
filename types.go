@@ -28,6 +28,7 @@ type Encoder struct {
 	err         error
 	once        sync.Once
 	jsonEncoder *json.Encoder
+	closeOnce   sync.Once
 }
 
 /*

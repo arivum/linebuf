@@ -10,9 +10,10 @@ See [general documenation](https://pkg.go.dev/github.com/arivum/linebuf) and [pa
 package main
 
 import (
-    "fmt"
-    "github.com/arivum/linebuf/pkg/linebuf"
+	"fmt"
 	"io"
+
+	"github.com/arivum/linebuf"
 )
 
 type Test struct {
@@ -32,7 +33,7 @@ func main() {
 	reader, writer := io.Pipe()
 	go func() {
 		// create new line buffered JSON encoder that writes to the write-end of the pipe
-		encoder, _ := linebuf.NewEncoder(w0)
+		encoder, _ := linebuf.NewEncoder(writer)
 
 		// get stream channel to send stream entries onto the wire
 		stream := encoder.Stream()
@@ -46,7 +47,7 @@ func main() {
 
 	// create new decoder that reads the read-end of the pipe
 	decoder, _ := linebuf.NewDecoder(reader)
-	
+
 	// get stream channel to read each decoded entry. Specify an optional parameter to tell the decoder how to unmarshal each entry. If left empty, the chance of getting map[string]interface{} is high
 	stream := decoder.Stream(&Test{})
 	for entry := range stream {
@@ -54,4 +55,5 @@ func main() {
 		fmt.Println(entry.(Test).ID)
 	}
 }
+
 ```
