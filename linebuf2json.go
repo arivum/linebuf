@@ -11,7 +11,7 @@ NewLinebufJSONConverter returns a writer that converts line-buffered JSON back t
 func NewLinebufJSONConverter(w io.WriteCloser) LinebufJSONConverter {
 	var (
 		r, tmpWriter    = io.Pipe()
-		bufReader       = bufio.NewReader(r)
+		bufReader       = bufio.NewReaderSize(r, 64<<10)
 		sanitizedWriter = LinebufJSONConverter{tmpWriter, nil}
 	)
 

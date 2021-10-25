@@ -12,7 +12,7 @@ This allows to differntiate between multiline JSON and linebuffered JSON.
 */
 func NewLineSanitizedReader(r io.Reader) LineSanitizedReader {
 	var (
-		bufReader       = bufio.NewReader(r)
+		bufReader       = bufio.NewReaderSize(r, 64<<10)
 		tmpReader, w    = io.Pipe()
 		sanitizedReader = LineSanitizedReader{tmpReader, nil}
 	)
