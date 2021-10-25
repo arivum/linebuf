@@ -3,49 +3,81 @@ package linebuf
 import (
 	"bufio"
 	"io"
+	"math"
 	"reflect"
 
 	"code.cloudfoundry.org/bytefmt"
 	"github.com/segmentio/encoding/json"
 )
 
+type DecoderOption (func(*Decoder) error)
+
 /*
-NewDecoder returns a linebuf decoder from an io.Reader. The buffersize will be 4kB
+WithDecoderUnbuffered can be provided as option to NewDecoder, thus turning off buffer mode
 */
-func NewDecoder(r io.Reader) *Decoder {
-	d, _ := NewDecoderWithBuffersize(r, "4k")
-	return d
+func WithDecoderUnbuffered() DecoderOption {
+	return func(dec *Decoder) error {
+		dec.unbuffered = true
+		return nil
+	}
 }
 
 /*
-NewDecoderWithBuffersize returns a linebuf decoder from an io.Reader while allowing to specify a custom buffersize.
-
-An error will be returned if parsing of the bufsize fails
+WithDecoderBuffersize can be used as option to NewDecoder, thus providing another buffersize than the default 4k
 */
-func NewDecoderWithBuffersize(r io.Reader, bufSize string) (*Decoder, error) {
+func WithDecoderBuffersize(bufSize string) DecoderOption {
+	return func(dec *Decoder) error {
+		var (
+			bufBytes uint64
+			err      error
+		)
+		if bufBytes, err = bytefmt.ToBytes(bufSize); err != nil {
+			return err
+		}
+		dec.bufBytes = bufBytes
+		return nil
+	}
+}
+
+/*
+NewDecoder returns a linebuf decoder from an io.Reader while allowing to specify custom options like unbuffered mode and/or setting the buffer size.
+
+The default buffer size is 4k
+
+An error will be returned e.g. if parsing of the bufsize fails
+*/
+func NewDecoder(r io.Reader, options ...DecoderOption) (*Decoder, error) {
 	var (
-		err      error
-		bufBytes uint64
-		jsonDec  *json.Decoder
-		buf      *bufio.Reader
+		err     error
+		jsonDec *json.Decoder
+		option  DecoderOption
+		dec     = &Decoder{
+			err: nil,
+			r:   r,
+			s:   make(chan interface{}),
+		}
+		buf *bufio.Reader
 	)
 
-	if bufBytes, err = bytefmt.ToBytes(bufSize); err != nil {
-		return nil, err
+	for _, option = range options {
+		if err = option(dec); err != nil {
+			return nil, err
+		}
 	}
 
-	buf = bufio.NewReaderSize(r, int(bufBytes))
+	buf = bufio.NewReaderSize(r, int(math.Max(float64(dec.bufBytes), 4<<10)))
 	jsonDec = json.NewDecoder(buf)
 	jsonDec.ZeroCopy()
 	jsonDec.UseNumber()
 	jsonDec.DontMatchCaseInsensitiveStructFields()
-	return &Decoder{
-		buf:     buf,
-		err:     nil,
-		r:       r,
-		s:       make(chan interface{}, 10),
-		jsonDec: jsonDec,
-	}, nil
+
+	dec.buf = buf
+	dec.jsonDec = jsonDec
+	if !dec.unbuffered {
+		dec.s = make(chan interface{}, 10)
+	}
+
+	return dec, nil
 }
 
 /*

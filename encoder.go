@@ -3,44 +3,71 @@ package linebuf
 import (
 	"bufio"
 	"io"
+	"math"
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"
 	"github.com/segmentio/encoding/json"
 )
 
+type EncoderOption (func(*Encoder) error)
+
 /*
-NewEncoder returns a linebuf encoder from an io.Writer. The buffersize will be 4kB
+WithUnbuffered can be provided as option to NewEncoder, thus turning off buffer mode
 */
-func NewEncoder(w io.Writer) *Encoder {
-	e, _ := NewEncoderWithBuffersize(w, "4k")
-	return e
+func WithEncoderUnbuffered() EncoderOption {
+	return func(enc *Encoder) error {
+		enc.unbuffered = true
+		return nil
+	}
 }
 
 /*
-NewEncoderWithBuffersize returns a linebuf encoder from an io.Writer while allowing to specify a custom buffersize.
-
-An error will be returned if parsing of the bufsize fails
+WithBuffersize can be used as option to NewEncoder, thus providing another buffersize than the default 4k
 */
-func NewEncoderWithBuffersize(w io.Writer, bufSize string) (*Encoder, error) {
+func WithEncoderBuffersize(bufSize string) EncoderOption {
+	return func(enc *Encoder) error {
+		var (
+			bufBytes uint64
+			err      error
+		)
+		if bufBytes, err = bytefmt.ToBytes(bufSize); err != nil {
+			return err
+		}
+		enc.bufBytes = bufBytes
+		return nil
+	}
+}
+
+/*
+NewEncoder returns a linebuf encoder from an io.Writer while allowing to sspecify custom options like unbuffered mode and/or setting the buffer size.
+
+The default buffer size is 4k
+
+An error will be returned e.g. if parsing of the bufsize fails
+*/
+func NewEncoder(w io.Writer, options ...EncoderOption) (*Encoder, error) {
 	var (
-		err      error
-		bufBytes uint64
-		buf      *bufio.Writer
+		err    error
+		option EncoderOption
+		buf    *bufio.Writer
+		enc    = &Encoder{
+			w:   w,
+			s:   make(chan interface{}),
+			err: nil,
+		}
 	)
 
-	if bufBytes, err = bytefmt.ToBytes(bufSize); err != nil {
-		return nil, err
+	for _, option = range options {
+		if err = option(enc); err != nil {
+			return nil, err
+		}
 	}
 
-	buf = bufio.NewWriterSize(w, int(bufBytes))
-	return &Encoder{
-		buf:         buf,
-		w:           w,
-		s:           make(chan interface{}, 10),
-		err:         nil,
-		jsonEncoder: json.NewEncoder(buf),
-	}, nil
+	buf = bufio.NewWriterSize(w, int(math.Max(float64(enc.bufBytes), 4<<10)))
+	enc.buf = buf
+	enc.jsonEncoder = json.NewEncoder(enc.buf)
+	return enc, nil
 }
 
 /*

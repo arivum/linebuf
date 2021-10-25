@@ -41,6 +41,8 @@ type Encoder struct {
 	once        sync.Once
 	jsonEncoder *json.Encoder
 	closeOnce   sync.Once
+	unbuffered  bool
+	bufBytes    uint64
 }
 
 /*
@@ -48,10 +50,12 @@ Decoder reads line-buffered JSON from the underlaying io.Reader and decodes them
 */
 type Decoder struct {
 	context.Context
-	buf     *bufio.Reader
-	r       io.Reader
-	s       chan interface{}
-	once    sync.Once
-	err     error
-	jsonDec *json.Decoder
+	buf        *bufio.Reader
+	r          io.Reader
+	s          chan interface{}
+	once       sync.Once
+	err        error
+	jsonDec    *json.Decoder
+	unbuffered bool
+	bufBytes   uint64
 }
