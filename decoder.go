@@ -12,8 +12,9 @@ import (
 /*
 NewDecoder returns a linebuf decoder from an io.Reader. The buffersize will be 4kB
 */
-func NewDecoder(r io.Reader) (*Decoder, error) {
-	return NewDecoderWithBuffersize(r, "4k")
+func NewDecoder(r io.Reader) *Decoder {
+	d, _ := NewDecoderWithBuffersize(r, "4k")
+	return d
 }
 
 /*

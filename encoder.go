@@ -12,8 +12,9 @@ import (
 /*
 NewEncoder returns a linebuf encoder from an io.Writer. The buffersize will be 4kB
 */
-func NewEncoder(w io.Writer) (*Encoder, error) {
-	return NewEncoderWithBuffersize(w, "4k")
+func NewEncoder(w io.Writer) *Encoder {
+	e, _ := NewEncoderWithBuffersize(w, "4k")
+	return e
 }
 
 /*
