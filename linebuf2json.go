@@ -26,15 +26,13 @@ func NewLinebufJSONConverter(w io.WriteCloser) *LinebufJSONConverter {
 		var (
 			firstline []byte
 			line      []byte
-			isArray   = false
 		)
 
-		sanitizedWriter.mutex.Lock()
 		defer func() {
-			if isArray {
+			if sanitizedWriter.isArray {
 				_, sanitizedWriter.err = sanitizedWriter.w.Write([]byte("]\n"))
 			}
-			sanitizedWriter.mutex.Unlock()
+			sanitizedWriter.w.Close()
 		}()
 
 		if firstline, sanitizedWriter.err = sanitizedWriter.r.ReadBytes('\n'); sanitizedWriter.err != nil {
@@ -45,23 +43,23 @@ func NewLinebufJSONConverter(w io.WriteCloser) *LinebufJSONConverter {
 		for {
 			if line, sanitizedWriter.err = sanitizedWriter.r.ReadBytes('\n'); sanitizedWriter.err != nil {
 				_, sanitizedWriter.err = sanitizedWriter.w.Write(line)
-				break
+				return
 			} else {
 				if len(line) > 0 && firstline != nil {
 					if sanitizedWriter.err = write(sanitizedWriter.w, []byte("["), firstline[:len(firstline)-1], []byte(","), line[:len(line)-1]); sanitizedWriter.err != nil {
-						break
+						return
 					}
 					firstline = nil
-					isArray = true
+					sanitizedWriter.isArray = true
 				} else if firstline != nil {
 					_, sanitizedWriter.err = w.Write(firstline[:])
-					break
+					return
 				} else if len(line) > 0 {
 					if sanitizedWriter.err = write(sanitizedWriter.w, []byte(","), []byte(line[:len(line)-1])); sanitizedWriter.err != nil {
-						break
+						return
 					}
 				} else {
-					break
+					return
 				}
 			}
 		}
@@ -84,10 +82,7 @@ func (l *LinebufJSONConverter) Close() error {
 	if err = l.pipeWriter.Close(); err != nil {
 		return err
 	}
-	l.mutex.Lock()
-	err = l.w.Close()
-	l.mutex.Unlock()
-	return err
+	return nil
 }
 
 /*

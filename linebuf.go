@@ -26,8 +26,7 @@ type LinebufJSONConverter struct {
 	pipeWriter *io.PipeWriter
 	r          *bufio.Reader
 	err        error
-	finished   bool
-	mutex      sync.Mutex
+	isArray    bool
 }
 
 /*
