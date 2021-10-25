@@ -3,7 +3,6 @@ package linebuf
 import (
 	"bufio"
 	"io"
-	"time"
 )
 
 /*
@@ -12,9 +11,15 @@ NewLinebufJSONConverter returns a writer that converts line-buffered JSON back t
 func NewLinebufJSONConverter(w io.WriteCloser) *LinebufJSONConverter {
 	var (
 		r, pipeWriter   = io.Pipe()
-		bufReader       = bufio.NewReaderSize(r, 4096)
-		bufWriter       = bufio.NewWriterSize(pipeWriter, 4096)
-		sanitizedWriter = &LinebufJSONConverter{bufWriter, w, pipeWriter, bufReader, nil, false}
+		bufReader       = bufio.NewReaderSize(r, 16)
+		bufWriter       = bufio.NewWriterSize(pipeWriter, 16)
+		sanitizedWriter = &LinebufJSONConverter{
+			Writer:     bufWriter,
+			w:          w,
+			pipeWriter: pipeWriter,
+			r:          bufReader,
+			err:        nil,
+		}
 	)
 
 	go func() {
@@ -24,8 +29,9 @@ func NewLinebufJSONConverter(w io.WriteCloser) *LinebufJSONConverter {
 			isArray   = false
 		)
 
+		sanitizedWriter.mutex.Lock()
 		defer func() {
-			sanitizedWriter.finished = true
+			sanitizedWriter.mutex.Unlock()
 		}()
 
 		if firstline, sanitizedWriter.err = sanitizedWriter.r.ReadBytes('\n'); sanitizedWriter.err != nil {
@@ -68,12 +74,20 @@ func NewLinebufJSONConverter(w io.WriteCloser) *LinebufJSONConverter {
 Close waits until the last writes have finished and gracefully closes the underlaying writers
 */
 func (l *LinebufJSONConverter) Close() error {
-	l.Writer.Flush()
-	l.pipeWriter.Close()
-	for !l.finished {
-		time.Sleep(100 * time.Microsecond)
+	var (
+		err error
+	)
+
+	if err = l.Writer.Flush(); err != nil {
+		return err
 	}
-	return l.w.Close()
+	if err = l.pipeWriter.Close(); err != nil {
+		return err
+	}
+	l.mutex.Lock()
+	err = l.w.Close()
+	l.mutex.Unlock()
+	return err
 }
 
 /*

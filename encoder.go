@@ -117,11 +117,13 @@ func (enc *Encoder) Stream() chan<- interface{} {
 				value interface{}
 			)
 
+			enc.mutex.Lock()
 			for value = range enc.s {
 				if enc.err = enc.write(value); enc.err != nil {
 					continue
 				}
 			}
+			enc.mutex.Unlock()
 		}()
 	})
 
@@ -141,12 +143,14 @@ func (enc *Encoder) Close() {
 			time.Sleep(100 * time.Microsecond)
 		}
 		close(enc.s)
+		enc.mutex.Lock()
 
 		enc.buf.Flush()
 
 		if _, ok = enc.w.(io.Closer); ok {
 			enc.w.(io.Closer).Close()
 		}
+		enc.mutex.Unlock()
 	})
 
 }

@@ -27,6 +27,7 @@ type LinebufJSONConverter struct {
 	r          *bufio.Reader
 	err        error
 	finished   bool
+	mutex      sync.Mutex
 }
 
 /*
@@ -43,6 +44,7 @@ type Encoder struct {
 	closeOnce   sync.Once
 	unbuffered  bool
 	bufBytes    uint64
+	mutex       sync.Mutex
 }
 
 /*
