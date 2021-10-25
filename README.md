@@ -2,7 +2,7 @@
 
 This module allows JSON stream processing via line-buffered JSON objects.
 
-See [general documenation](https://pkg.go.dev/github.com/arivum/linebuf) and [package documentation](https://pkg.go.dev/github.com/arivum/linebuf/pkg/linebuf)
+See [package documenation](https://pkg.go.dev/github.com/arivum/linebuf)
 
 ## How to use
 
