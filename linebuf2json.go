@@ -3,16 +3,18 @@ package linebuf
 import (
 	"bufio"
 	"io"
+	"time"
 )
 
 /*
 NewLinebufJSONConverter returns a writer that converts line-buffered JSON back to valid JSON and writes it to the underlaying io.WriteCloser.
 */
-func NewLinebufJSONConverter(w io.WriteCloser) LinebufJSONConverter {
+func NewLinebufJSONConverter(w io.WriteCloser) *LinebufJSONConverter {
 	var (
-		r, tmpWriter    = io.Pipe()
-		bufReader       = bufio.NewReaderSize(r, 64<<10)
-		sanitizedWriter = LinebufJSONConverter{tmpWriter, nil}
+		r, pipeWriter   = io.Pipe()
+		bufReader       = bufio.NewReaderSize(r, 4096)
+		bufWriter       = bufio.NewWriterSize(pipeWriter, 4096)
+		sanitizedWriter = &LinebufJSONConverter{bufWriter, w, pipeWriter, bufReader, nil, false}
 	)
 
 	go func() {
@@ -21,42 +23,57 @@ func NewLinebufJSONConverter(w io.WriteCloser) LinebufJSONConverter {
 			line      []byte
 			isArray   = false
 		)
+
 		defer func() {
-			w.Close()
-			sanitizedWriter.Close()
+			sanitizedWriter.finished = true
 		}()
 
-		if firstline, sanitizedWriter.err = bufReader.ReadBytes(byte('\n')); sanitizedWriter.err != nil {
-			_, sanitizedWriter.err = w.Write(firstline)
+		if firstline, sanitizedWriter.err = sanitizedWriter.r.ReadBytes('\n'); sanitizedWriter.err != nil {
+			_, sanitizedWriter.err = sanitizedWriter.w.Write(firstline)
 			return
 		}
 
 		for {
-			line, sanitizedWriter.err = bufReader.ReadBytes(byte('\n'))
-
-			if len(line) > 0 && len(firstline) > 0 {
-				if sanitizedWriter.err = write(w, []byte("["), firstline[:len(firstline)-1], []byte(","), line[:len(line)-1]); sanitizedWriter.err != nil {
-					return
-				}
-				firstline = nil
-				isArray = true
-			} else if len(firstline) > 0 {
-				_, sanitizedWriter.err = w.Write(firstline[:])
+			if line, sanitizedWriter.err = sanitizedWriter.r.ReadBytes('\n'); sanitizedWriter.err != nil {
+				_, sanitizedWriter.err = sanitizedWriter.w.Write(line)
 				break
-			} else if len(line) > 0 {
-				if sanitizedWriter.err = write(w, []byte(","), []byte(line[:len(line)-1])); sanitizedWriter.err != nil {
-					return
-				}
 			} else {
-				break
+				if len(line) > 0 && firstline != nil {
+					if sanitizedWriter.err = write(sanitizedWriter.w, []byte("["), firstline[:len(firstline)-1], []byte(","), line[:len(line)-1]); sanitizedWriter.err != nil {
+						break
+					}
+					firstline = nil
+					isArray = true
+				} else if firstline != nil {
+					_, sanitizedWriter.err = w.Write(firstline[:])
+					break
+				} else if len(line) > 0 {
+					if sanitizedWriter.err = write(sanitizedWriter.w, []byte(","), []byte(line[:len(line)-1])); sanitizedWriter.err != nil {
+						break
+					}
+				} else {
+					break
+				}
 			}
 		}
 		if isArray {
-			_, sanitizedWriter.err = w.Write([]byte("]\n"))
+			_, sanitizedWriter.err = sanitizedWriter.w.Write([]byte("]\n"))
 		}
 	}()
 
 	return sanitizedWriter
+}
+
+/*
+Close waits until the last writes have finished and gracefully closes the underlaying writers
+*/
+func (l *LinebufJSONConverter) Close() error {
+	l.Writer.Flush()
+	l.pipeWriter.Close()
+	for !l.finished {
+		time.Sleep(100 * time.Microsecond)
+	}
+	return l.w.Close()
 }
 
 /*

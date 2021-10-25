@@ -105,25 +105,21 @@ func (enc *Encoder) Stream() chan<- interface{} {
 Close closes the encoder and the underlaying io.Writer. This signals the opposite read-end that the transmission has ended.
 */
 func (enc *Encoder) Close() {
-	var (
-		ok bool
-	)
-
-	for len(enc.s) > 0 {
-		time.Sleep(100 * time.Microsecond)
-	}
-
-	enc.buf.Flush()
-
-	if _, ok = enc.w.(io.Closer); ok {
-		enc.w.(io.Closer).Close()
-	}
-
-	enc.closeChan()
-}
-
-func (enc *Encoder) closeChan() {
 	enc.closeOnce.Do(func() {
+		var (
+			ok bool
+		)
+
+		for len(enc.s) > 0 {
+			time.Sleep(100 * time.Microsecond)
+		}
 		close(enc.s)
+
+		enc.buf.Flush()
+
+		if _, ok = enc.w.(io.Closer); ok {
+			enc.w.(io.Closer).Close()
+		}
 	})
+
 }

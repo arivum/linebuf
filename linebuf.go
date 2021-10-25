@@ -21,8 +21,12 @@ type LineSanitizedReader struct {
 LinebufJSONConverter wraps an io.Writer and converts line-buffered writes to regular JSON
 */
 type LinebufJSONConverter struct {
-	*io.PipeWriter
-	err error
+	*bufio.Writer
+	w          io.WriteCloser
+	pipeWriter *io.PipeWriter
+	r          *bufio.Reader
+	err        error
+	finished   bool
 }
 
 /*
