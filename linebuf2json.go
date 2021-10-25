@@ -31,11 +31,10 @@ func NewLinebufJSONConverter(w io.WriteCloser) *LinebufJSONConverter {
 
 		sanitizedWriter.mutex.Lock()
 		defer func() {
-			sanitizedWriter.mutex.Unlock()
-
 			if isArray {
 				_, sanitizedWriter.err = sanitizedWriter.w.Write([]byte("]\n"))
 			}
+			sanitizedWriter.mutex.Unlock()
 		}()
 
 		if firstline, sanitizedWriter.err = sanitizedWriter.r.ReadBytes('\n'); sanitizedWriter.err != nil {
