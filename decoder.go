@@ -2,12 +2,12 @@ package linebuf
 
 import (
 	"bufio"
+	"encoding/json"
 	"io"
 	"math"
 	"reflect"
 
 	"code.cloudfoundry.org/bytefmt"
-	"github.com/segmentio/encoding/json"
 )
 
 type DecoderOption (func(*Decoder) error)
@@ -67,9 +67,7 @@ func NewDecoder(r io.Reader, options ...DecoderOption) (*Decoder, error) {
 
 	buf = bufio.NewReaderSize(r, int(math.Max(float64(dec.bufBytes), 4<<10)))
 	jsonDec = json.NewDecoder(buf)
-	jsonDec.ZeroCopy()
 	jsonDec.UseNumber()
-	jsonDec.DontMatchCaseInsensitiveStructFields()
 
 	dec.buf = buf
 	dec.jsonDec = jsonDec

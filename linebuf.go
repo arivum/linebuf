@@ -3,10 +3,9 @@ package linebuf
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"io"
 	"sync"
-
-	"github.com/segmentio/encoding/json"
 )
 
 /*

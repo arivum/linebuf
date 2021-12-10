@@ -2,12 +2,12 @@ package linebuf
 
 import (
 	"bufio"
+	"encoding/json"
 	"io"
 	"math"
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"
-	"github.com/segmentio/encoding/json"
 )
 
 type EncoderOption (func(*Encoder) error)
