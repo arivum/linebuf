@@ -42,6 +42,9 @@ func NewLinebufJSONConverter(w io.WriteCloser) *LinebufJSONConverter {
 
 		for {
 			if line, sanitizedWriter.err = sanitizedWriter.r.ReadBytes('\n'); sanitizedWriter.err != nil {
+				if firstline != nil {
+					_, sanitizedWriter.err = sanitizedWriter.w.Write(firstline)
+				}
 				_, sanitizedWriter.err = sanitizedWriter.w.Write(line)
 				return
 			} else {
