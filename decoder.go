@@ -72,7 +72,7 @@ func NewDecoder(r io.Reader, options ...DecoderOption) (*Decoder, error) {
 	dec.buf = buf
 	dec.jsonDec = jsonDec
 	if !dec.unbuffered {
-		dec.s = make(chan interface{}, 10)
+		dec.s = make(chan interface{}, 100)
 	}
 
 	return dec, nil

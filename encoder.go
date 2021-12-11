@@ -67,6 +67,9 @@ func NewEncoder(w io.Writer, options ...EncoderOption) (*Encoder, error) {
 	buf = bufio.NewWriterSize(w, int(math.Max(float64(enc.bufBytes), 4<<10)))
 	enc.buf = buf
 	enc.jsonEncoder = json.NewEncoder(enc.buf)
+	if !enc.unbuffered {
+		enc.s = make(chan interface{}, 100)
+	}
 	return enc, nil
 }
 
